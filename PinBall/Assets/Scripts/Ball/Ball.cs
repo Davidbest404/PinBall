@@ -23,6 +23,10 @@ namespace Pinball.Gameplay
 
         public Rigidbody2D Rigidbody => rb;
 
+        [Header("Телепорт")]
+        [Tooltip("До какого времени мяч игнорирует телепорты (защита от петель).")]
+        public float TeleportCooldownUntil { get; set; }
+
         private void Awake()
         {
             rb = GetComponent<Rigidbody2D>();
@@ -87,6 +91,7 @@ namespace Pinball.Gameplay
             transform.localScale = originalScale;
             bounceStreak = 0;
             lastBounceTime = 0f;
+            TeleportCooldownUntil = 0f;
         }
     }
 }

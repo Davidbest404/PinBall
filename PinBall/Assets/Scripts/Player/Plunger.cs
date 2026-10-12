@@ -6,16 +6,16 @@ namespace Pinball.Player
 {
     public class Plunger : MonoBehaviour
     {
-        [Header("����������")]
+        [Header("Управление")]
         [SerializeField] private KeyCode[] launchKeys = { KeyCode.Space, KeyCode.Return };
 
-        [Header("���������")]
+        [Header("Параметры")]
         [SerializeField] private float maxPull = 1.5f;
         [SerializeField] private float pullSpeed = 4f;
         [SerializeField] private float minLaunchForce = 3f;
         [SerializeField] private float maxLaunchForce = 22f;
 
-        [Header("������")]
+        [Header("Визуал (3D-модель плунжера)")]
         [SerializeField] private Transform plungerVisual;
 
         private float pullAmount;
@@ -30,17 +30,7 @@ namespace Pinball.Player
 
         private void Update()
         {
-            Ball ball = GameManager.Instance?.Balls.CurrentBall;
-            if (ball == null) return;
-
-            if (!IsBallAtPlunger(ball))
-            {
-                charging = false;
-                pullAmount = 0f;
-                UpdateVisual();
-                return;
-            }
-
+            // Ввод читаем ВСЕГДА — не зависим от наличия мяча
             if (AnyKeyDown()) { charging = true; pullAmount = 0f; }
 
             if (charging && AnyKeyHeld())
@@ -51,11 +41,33 @@ namespace Pinball.Player
 
             if (charging && AnyKeyUp())
             {
-                Launch(ball);
+                TryLaunch();
                 charging = false;
                 pullAmount = 0f;
                 UpdateVisual();
             }
+        }
+
+        private void TryLaunch()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null) { Debug.LogWarning("[Plunger] Нет GameManager.Instance"); return; }
+
+            Ball ball = gm.Balls?.CurrentBall;
+            if (ball == null) { Debug.LogWarning("[Plunger] Нет текущего мяча"); return; }
+
+            if (!IsBallAtPlunger(ball))
+            {
+                Debug.Log("[Plunger] Мяч не у плунжера, запуск отменён");
+                return;
+            }
+
+            float t = maxPull > 0f ? pullAmount / maxPull : 0f;
+            float force = Mathf.Lerp(minLaunchForce, maxLaunchForce, t);
+
+            ball.ApplyImpulse(Vector2.up, force);
+            gm.Balls.NotifyBallLaunched();
+            Debug.Log($"[Plunger] Запуск силой {force}");
         }
 
         private bool IsBallAtPlunger(Ball ball)
@@ -74,15 +86,6 @@ namespace Pinball.Player
             Vector3 p = visualRestLocalPos;
             p.y -= pullAmount;
             plungerVisual.localPosition = p;
-        }
-
-        private void Launch(Ball ball)
-        {
-            float t = pullAmount / maxPull;
-            float force = Mathf.Lerp(minLaunchForce, maxLaunchForce, t);
-
-            ball.ApplyImpulse(Vector2.up, force);
-            GameManager.Instance.Balls.NotifyBallLaunched();
         }
 
         private bool AnyKeyDown()
